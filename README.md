@@ -1,4 +1,4 @@
-BestBuy Reviews Retriever
+Gavagai Lexicon Graph
 =========================
 
 This is a utility for creating a Neo4j graph database from the word knowledge in [Gavagai Living Lexicon](http://lexicon.gavagai.se/).
