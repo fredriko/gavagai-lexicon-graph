@@ -1,4 +1,4 @@
-package se.fredrikolsson.gavagai.lexiconDbPopulator;
+package se.fredrikolsson.gavagai;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -12,7 +12,7 @@ import java.util.List;
 /**
  *
  */
-public class LookupResponse {
+class LookupResponse {
     private static Logger logger = LoggerFactory.getLogger(LookupResponse.class);
 
     private final JSONObject payload;
@@ -20,34 +20,34 @@ public class LookupResponse {
     private final String languageCode;
     private String targetTerm;
 
-    public LookupResponse(JSONObject payload, int currentDepth, String languageCode, String targetTerm) {
+    LookupResponse(JSONObject payload, int currentDepth, String languageCode, String targetTerm) {
         this.payload = payload;
         this.currentDepth = currentDepth;
         this.languageCode = languageCode;
         setTargetTerm(targetTerm);
     }
 
-    protected JSONObject getPayload() {
+    JSONObject getPayload() {
         return payload;
     }
 
-    public String getLanguageCode() {
+    String getLanguageCode() {
         return languageCode;
     }
 
-    public int getCurrentDepth() {
+    int getCurrentDepth() {
         return currentDepth;
     }
 
-    public void setTargetTerm(String targetTerm) {
+    private void setTargetTerm(String targetTerm) {
         this.targetTerm = targetTerm;
     }
 
-    public String getTargetTerm() {
+    String getTargetTerm() {
         return this.targetTerm;
     }
 
-    protected JSONObject getWordInformation() throws JSONException {
+    private JSONObject getWordInformation() throws JSONException {
         JSONObject result = null;
         if (getPayload() != null && getPayload().getJSONObject("wordInformation") != null) {
             result = getPayload().getJSONObject("wordInformation");
@@ -55,7 +55,7 @@ public class LookupResponse {
         return result;
     }
 
-    public int getFrequency() throws JSONException {
+    int getFrequency() throws JSONException {
         int result = 0;
         if (getWordInformation() != null) {
             result = getWordInformation().getInt("frequency");
@@ -63,7 +63,7 @@ public class LookupResponse {
         return result;
     }
 
-    public int getDocumentFrequency() throws JSONException {
+    int getDocumentFrequency() throws JSONException {
         int result = 0;
         if (getWordInformation() != null) {
             result = getWordInformation().getInt("documentFrequency");
@@ -71,7 +71,7 @@ public class LookupResponse {
         return result;
     }
 
-    public int getAbsoluteRank() throws JSONException {
+    int getAbsoluteRank() throws JSONException {
         int result = 0;
         if (getWordInformation() != null) {
             result = getWordInformation().getInt("absoluteRank");
@@ -79,7 +79,7 @@ public class LookupResponse {
         return result;
     }
 
-    public double getRelativeRank() throws JSONException {
+    double getRelativeRank() throws JSONException {
         double result = 0.0;
         if (getWordInformation() != null) {
             result = getWordInformation().getDouble("relativeRank");
@@ -87,8 +87,8 @@ public class LookupResponse {
         return result;
     }
 
-    public List<String> getSemanticallySimilarTerms() throws JSONException {
-        List<String> terms = new ArrayList<String>();
+    List<String> getSemanticallySimilarTerms() throws JSONException {
+        List<String> terms = new ArrayList<>();
         if (getPayload() == null) {
             return terms;
         }
