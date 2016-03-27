@@ -23,5 +23,5 @@ This will generate a package including all dependencies in `gavagai-lexicon-grap
 ## Run
 
 
-    java -cp target/gavagai-lexicon-graph.jar se.fredrikolsson.gavagai.
+    java -jar target/gavagai-lexicon-graph.jar <command line arguments>
 
