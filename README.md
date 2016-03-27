@@ -1,16 +1,17 @@
 BestBuy Reviews Retriever
 =========================
 
-This is a utility for retrieving product reviews from [BestBuy](http://www.bestbuy.com/) and output the reviews as 
-a CSV spreadsheet.
+This is a utility for creating a Neo4j graph database from the word knowledge in [Gavagai Living Lexicon](http://lexicon.gavagai.se/).
 
 
 Prerequisites
 -------------
 
-You will need an API key from BestBuy. Sign up for one [here](https://developer.bestbuy.com/).
+You will need an API key from [Gavagai](http://gavagai.se). Sign up for one [here](https://developer.gavagai.se/).
 
 You will need Maven installed. Refer to the [Maven homepage](https://maven.apache.org/) for instructions on how to install it.
+
+You will need the Neo4j Community Edition installed. Instructions are available at [the Neo4j homepage](http://neo4j.com/download/).
 
 
 Build
@@ -20,16 +21,11 @@ On your local machine: Clone this project, change to the directory where the sou
 
     mvn package
 
-This will generate a package including all dependencies in `bestbuy-reviews-retriever/target/bestbuy-reviews-retriever.jar`.
+This will generate a package including all dependencies in `gavagai-lexicon-graph/target/gavagai-lexicon-graph.jar`.
 
 Run
 ---
 
-Before you can retrieve reviews, you need to decide on what products you are interested in. Go to 
-[BestBuys homepage](http://www.bestbuy.com/), search for the product of choice, and take note of its SKU code.
 
-Once the retriever has been built, and assuming you're still at the top level in the project directory, run 
-with the following command:
-
-    java -cp target/bestbuy-reviews-retriever.jar se.fredrikolsson.bestbuy.BestBuyReviewsRetriever <yourBestBuyApiKey> <outputDirectory> <skuCode_1> ... <skuCode_N>
+    java -cp target/gavagai-lexicon-graph.jar se.fredrikolsson.gavagai.
 
