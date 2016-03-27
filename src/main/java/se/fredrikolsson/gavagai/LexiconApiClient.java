@@ -1,4 +1,4 @@
-package se.fredrikolsson.gavagai.lexiconDbPopulator;
+package se.fredrikolsson.gavagai;
 
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
@@ -24,14 +24,12 @@ public class LexiconApiClient {
         logger.info("response size {}", response.length());
     }
 
-    public LexiconApiClient(String apiKey) {
+    LexiconApiClient(String apiKey) {
         this.apiKey = apiKey;
     }
 
-    public JSONObject process(String word, String iso639LanguageCode) throws Exception {
+    JSONObject process(String word, String iso639LanguageCode) throws Exception {
 
-        //Unirest.setTimeouts(10000, 120000);
-        //Unirest.setConcurrency(400, 20);
         HttpResponse<JsonNode> response = Unirest.get(getLexiconApiEndpoint() + "/{language}/{term}")
                 .routeParam("language", iso639LanguageCode)
                 .routeParam("term", word)
@@ -47,11 +45,11 @@ public class LexiconApiClient {
     }
 
 
-    public String getApiKey() {
+    private String getApiKey() {
         return apiKey;
     }
 
-    public static String getLexiconApiEndpoint() {
+    private static String getLexiconApiEndpoint() {
         return LEXICON_API_ENDPOINT;
     }
 }

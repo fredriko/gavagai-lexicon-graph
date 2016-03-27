@@ -1,4 +1,4 @@
-package se.fredrikolsson.gavagai.lexiconDbPopulator;
+package se.fredrikolsson.gavagai;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -19,7 +19,7 @@ import java.util.concurrent.BlockingQueue;
 /**
  *
  */
-public class LexiconLookupResponseWorker implements Runnable {
+class LexiconLookupResponseWorker implements Runnable {
 
     private static Logger logger = LoggerFactory.getLogger(LexiconLookupResponseWorker.class);
 
@@ -29,18 +29,11 @@ public class LexiconLookupResponseWorker implements Runnable {
     private final Map<String, Integer> seenTermsMap;
     private boolean isRunning;
     private int maxDepth;
-    /*
-    TODO Two responsibilities
-     - create new LookupRequests from the LookupResponse read
-       - stop if depth of LookupRequests larger than pre-specified value
-     - create Neo4j nodes from the LookupResponse and persistMongoDb them in the db
-
-     */
     // TODO log number of nodes persisted every 30 seconds or so
     // TODO log size of queues at the same time
 
 
-    public LexiconLookupResponseWorker(
+    LexiconLookupResponseWorker(
             BlockingQueue<LookupRequest> lookupRequestQueue,
             BlockingQueue<LookupResponse> lookupResponseQueue,
             int maxDepth,
@@ -49,7 +42,7 @@ public class LexiconLookupResponseWorker implements Runnable {
         this.lookupRequestQueue = lookupRequestQueue;
         this.lookupResponseQueue = lookupResponseQueue;
         this.neo4jDb = new GraphDatabaseFactory().newEmbeddedDatabase(new File(dbPath));
-        this.seenTermsMap =  new TreeMap<String, Integer>();
+        this.seenTermsMap = new TreeMap<>();
 
         setMaxDepth(maxDepth);
         setRunning(true);
@@ -59,7 +52,7 @@ public class LexiconLookupResponseWorker implements Runnable {
     public void run() {
         logger.info("Starting to run");
         while (isRunning()) {
-            LookupResponse response = null;
+            LookupResponse response;
             try {
                 response = getLookupResponseQueue().take();
                 if (response != null) {
@@ -76,7 +69,7 @@ public class LexiconLookupResponseWorker implements Runnable {
         logger.info("Exiting run method");
     }
 
-    protected void persistNode4j(LookupResponse response) throws JSONException {
+    private void persistNode4j(LookupResponse response) throws JSONException {
         Transaction tx = null;
         try {
             tx = getNeo4jDb().beginTx();
@@ -102,46 +95,13 @@ public class LexiconLookupResponseWorker implements Runnable {
                             break;
                         }
                     }
-
                     if (shouldConnect) {
                         Relationship relationship = targetTerm.createRelationshipTo(node, TermRelation.NEIGHBOR);
                         relationship.setProperty("semanticLabel", semanticLabel);
                         relationship.setProperty("strength", words.getJSONObject(j).getDouble("strength"));
                     }
                 }
-
             }
-
-
-            /*
-            // TODO make use of semanticallySimilarWordFilaments instead, to get a hold of semantic labels
-            JSONArray neighbors = (response.getPayload()).getJSONArray("semanticallySimilarWords");
-            for (int i = 0; i < neighbors.length(); i++) {
-                JSONObject neighbor = neighbors.getJSONObject(i);
-                Node node = getOrCreateNodeWithUniqueFactory(neighbor.getString("word"), getNeo4jDb());
-                node.addLabel(TermLabel.TERM);
-
-                // TODO construct semantic label to use on relationship. Also, qualify the shouldConnect by using the semantic label on the found relation
-
-
-                Iterable<Relationship> relationships = targetTerm.getRelationships();
-                boolean shouldConnect = true;
-                for (Relationship relationship : relationships) {
-                    if (relationship.getOtherNode(targetTerm).equals(node)) {
-                        shouldConnect = false;
-                    }
-                }
-                if (shouldConnect) {
-                    Relationship relationship = targetTerm.createRelationshipTo(node, TermRelation.NEIGHBOR);
-                    relationship.setProperty("strength", neighbor.getDouble("strength"));
-                    // TODO add labelled relation, i.e., the syntagmatic label, as property
-                    // TODO add label + strength as additional property, just to use for show
-
-
-                    // TODO add property for frequency and document frequency
-                }
-            }
-            */
             tx.success();
         } finally {
             if (tx != null) {
@@ -151,7 +111,7 @@ public class LexiconLookupResponseWorker implements Runnable {
     }
 
 
-    protected String createSemanticLabel(JSONArray labels) throws JSONException {
+    private String createSemanticLabel(JSONArray labels) throws JSONException {
         if (labels.length() == 0) {
             return "";
         }
@@ -175,7 +135,7 @@ public class LexiconLookupResponseWorker implements Runnable {
         return left.length() > 3 ? left.toString().trim() : "";
     }
 
-    protected Node createTargetTermNode(LookupResponse response) throws JSONException {
+    private Node createTargetTermNode(LookupResponse response) throws JSONException {
         Node targetTerm = getOrCreateNodeWithUniqueFactory(response.getTargetTerm(), getNeo4jDb());
         targetTerm.addLabel(TermLabel.TERM);
         if (!targetTerm.hasProperty("numTokens")) {
@@ -196,7 +156,7 @@ public class LexiconLookupResponseWorker implements Runnable {
         return targetTerm;
     }
 
-    protected void createAddRequests(
+    private void createAddRequests(
             LookupResponse response,
             int maxDepth,
             BlockingQueue<LookupRequest> lookupRequestQueue,
@@ -219,7 +179,7 @@ public class LexiconLookupResponseWorker implements Runnable {
         }
     }
 
-    protected int computeNumWhitespaces(String input) {
+    private int computeNumWhitespaces(String input) {
         int numSpaces = 0;
         int i = 0;
         while (i < input.length()) {
@@ -231,57 +191,57 @@ public class LexiconLookupResponseWorker implements Runnable {
         return numSpaces;
     }
 
-    public GraphDatabaseService getNeo4jDb() {
+    private GraphDatabaseService getNeo4jDb() {
         return neo4jDb;
     }
 
-    public BlockingQueue<LookupRequest> getLookupRequestQueue() {
+    private BlockingQueue<LookupRequest> getLookupRequestQueue() {
         return lookupRequestQueue;
     }
 
-    public BlockingQueue<LookupResponse> getLookupResponseQueue() {
+    private BlockingQueue<LookupResponse> getLookupResponseQueue() {
         return lookupResponseQueue;
     }
 
-    public boolean isRunning() {
+    private boolean isRunning() {
         return isRunning;
     }
 
-    public void setRunning(boolean running) {
+    private void setRunning(boolean running) {
         isRunning = running;
     }
 
-    public int getMaxDepth() {
+    private int getMaxDepth() {
         return maxDepth;
     }
 
-    public void setMaxDepth(int maxDepth) {
+    private void setMaxDepth(int maxDepth) {
         this.maxDepth = maxDepth;
     }
 
-    public Map<String, Integer> getSeenTermsMap() {
+    private Map<String, Integer> getSeenTermsMap() {
         return seenTermsMap;
     }
 
     private static Node getOrCreateNodeWithUniqueFactory(String nodeName, GraphDatabaseService graphDb) {
-            UniqueFactory<Node> factory = new UniqueFactory.UniqueNodeFactory(
-                    graphDb, "index") {
-                @Override
-                protected void initialize(Node created,
-                        Map<String, Object> properties) {
-                    created.setProperty("name", properties.get("name"));
-                }
-            };
+        UniqueFactory<Node> factory = new UniqueFactory.UniqueNodeFactory(
+                graphDb, "index") {
+            @Override
+            protected void initialize(Node created,
+                                      Map<String, Object> properties) {
+                created.setProperty("name", properties.get("name"));
+            }
+        };
 
-            return factory.getOrCreate("name", nodeName);
+        return factory.getOrCreate("name", nodeName);
     }
 
     private enum TermLabel implements Label {
-        TERM;
+        TERM
     }
 
     private enum TermRelation implements RelationshipType {
-        NEIGHBOR;
+        NEIGHBOR
     }
 
 }

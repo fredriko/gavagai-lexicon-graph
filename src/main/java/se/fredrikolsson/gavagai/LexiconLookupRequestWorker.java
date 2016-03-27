@@ -1,4 +1,4 @@
-package se.fredrikolsson.gavagai.lexiconDbPopulator;
+package se.fredrikolsson.gavagai;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -8,9 +8,8 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.BlockingQueue;
 
 /**
- * TODO targetTerm must be url encoded to accomodate for e.g. the slash in "sir/madam"
  */
-public class LexiconLookupRequestWorker implements Runnable {
+class LexiconLookupRequestWorker implements Runnable {
 
     private static Logger logger = LoggerFactory.getLogger(LexiconLookupRequestWorker.class);
 
@@ -19,7 +18,7 @@ public class LexiconLookupRequestWorker implements Runnable {
     private final LexiconApiClient lexiconApiClient;
     private boolean isRunning;
 
-    public LexiconLookupRequestWorker(BlockingQueue<LookupRequest> lookupRequestQueue, BlockingQueue<LookupResponse> lookupResponseQueue, String apiKey) {
+    LexiconLookupRequestWorker(BlockingQueue<LookupRequest> lookupRequestQueue, BlockingQueue<LookupResponse> lookupResponseQueue, String apiKey) {
         this.lookupRequestQueue = lookupRequestQueue;
         this.lookupResponseQueue = lookupResponseQueue;
         this.lexiconApiClient = new LexiconApiClient(apiKey);
@@ -63,23 +62,23 @@ public class LexiconLookupRequestWorker implements Runnable {
         logger.info("Exiting run method");
     }
 
-    public BlockingQueue<LookupRequest> getLookupRequestQueue() {
+    private BlockingQueue<LookupRequest> getLookupRequestQueue() {
         return lookupRequestQueue;
     }
 
-    public BlockingQueue<LookupResponse> getLookupResponseQueue() {
+    private BlockingQueue<LookupResponse> getLookupResponseQueue() {
         return lookupResponseQueue;
     }
 
-    public LexiconApiClient getLexiconApiClient() {
+    private LexiconApiClient getLexiconApiClient() {
         return lexiconApiClient;
     }
 
-    public boolean isRunning() {
+    private boolean isRunning() {
         return isRunning;
     }
 
-    public void setRunning(boolean running) {
+    private void setRunning(boolean running) {
         isRunning = running;
     }
 }
