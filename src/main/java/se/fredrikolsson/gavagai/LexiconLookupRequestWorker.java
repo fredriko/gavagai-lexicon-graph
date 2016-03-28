@@ -27,8 +27,7 @@ class LexiconLookupRequestWorker implements Runnable {
 
     @Override
     public void run() {
-        logger.info("Starting to run");
-        while(isRunning()) {
+        while (isRunning()) {
             LookupRequest request = null;
             try {
                 request = getLookupRequestQueue().take();
@@ -49,7 +48,7 @@ class LexiconLookupRequestWorker implements Runnable {
                     Thread.sleep(100);
                 }
             } catch (InterruptedException e) {
-                logger.error("Interrupted! Aborting processing: {}", e.getMessage(), e);
+                logger.info("Interrupted! Aborting processing.");
                 setRunning(false);
             } catch (Exception e) {
                 if (request != null) {

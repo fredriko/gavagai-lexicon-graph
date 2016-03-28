@@ -11,13 +11,17 @@ import java.util.concurrent.*;
 /**
  * Class responsible for building a Neo4j graph database from entries in the Gavagai Living Lexicon.
  * <p>
+ * TODO implement stopping criterion: triggered by call-back from response worker.
+ * shut down request workers, response workers,
+ * TODO neo4j database (hook?), and print statistics
+ * TODO handle ctrl-c via shut down hook
+
  * TODO cannot handle / in target term: need url encoding of that particular case?
  * TODO add index to neo4j db to make searching for terms faster
  * TODO change to custom http client instead of unirest since it has problems with connection leaks (not consuming http entity)
- * TODO implement stopping criterion: triggered by call-back from response worker. shut down request workers, response workers, neo4j database, and print statistics
  * TODO implement logging of queue sizes: facilitate optimizing of workers vs and queue size
  */
-public class GraphCreator {
+class GraphCreator implements Stoppable {
 
     private static Logger logger = LoggerFactory.getLogger(GraphCreator.class);
 
@@ -33,12 +37,13 @@ public class GraphCreator {
     private final BlockingQueue<LookupResponse> lookupResponseQueue;
     private final ExecutorService lexiconLookupRequestWorkerExecutor;
     private final ExecutorService lexiconLookupResponseWorkerExecutor;
+    private final ScheduledExecutorService stopperExecutor;
 
     public static void main(String[] args) throws Exception {
 
         OptionSet options = null;
         try {
-            options = new OptionParser("a:d:ml:t:h").parse(args);
+            options = new OptionParser("a:d:m:l:t:h").parse(args);
         } catch (Throwable t) {
             System.err.println("\nError: " + t.getMessage() + ". Exiting.\n");
             GraphCreator.printUsage();
@@ -53,7 +58,7 @@ public class GraphCreator {
         GraphCreator populator = new GraphCreator(
                 (String) options.valueOf("a"),
                 (String) options.valueOf("d"),
-                options.has("m") ? (Integer) options.valueOf("m") : DEFAULT_MAX_DISTANCE);
+                options.has("m") ? Integer.valueOf((String) options.valueOf("m")) : DEFAULT_MAX_DISTANCE);
 
         populator.start();
         for (String term : (List<String>) options.valuesOf("t")) {
@@ -86,7 +91,6 @@ public class GraphCreator {
         this.neo4jDbName = neo4jDbName;
         this.lookupRequestQueue = new LinkedBlockingQueue<>(getRequestQueueSize());
         this.lookupResponseQueue = new LinkedBlockingQueue<>(getResponseQueueSize());
-        ThreadFactory lexiconLookupThreadFactory = new NamingThreadFactory("requestWorker");
         this.lexiconLookupRequestWorkerExecutor =
                 new ThreadPoolExecutor(
                         NUM_PRODUCER_THREADS,
@@ -94,8 +98,9 @@ public class GraphCreator {
                         0L,
                         TimeUnit.MILLISECONDS,
                         new LinkedBlockingQueue<Runnable>(),
-                        lexiconLookupThreadFactory);
+                        new NamingThreadFactory("requestWorker"));
         this.lexiconLookupResponseWorkerExecutor = Executors.newSingleThreadExecutor();
+        this.stopperExecutor = Executors.newSingleThreadScheduledExecutor(new NamingThreadFactory("stopper"));
     }
 
     private void start() {
@@ -108,6 +113,8 @@ public class GraphCreator {
                         getLookupResponseQueue(),
                         getMaxDistance(),
                         getNeo4jDbName()));
+        logger.info("Starting the Stopper watchdog");
+        getStopperExecutor().scheduleAtFixedRate(new Stopper(this, getLookupRequestQueue()), 20, 10, TimeUnit.SECONDS);
     }
 
     private void addLookupRequest(LookupRequest request) {
@@ -138,6 +145,10 @@ public class GraphCreator {
         return lexiconLookupResponseWorkerExecutor;
     }
 
+    private ScheduledExecutorService getStopperExecutor() {
+        return stopperExecutor;
+    }
+
     private int getMaxDistance() {
         return maxDistance;
     }
@@ -162,4 +173,11 @@ public class GraphCreator {
         }
     }
 
+    @Override
+    public void stop() {
+        logger.info("Shutting down...");
+        getStopperExecutor().shutdownNow();
+        getLexiconLookupRequestWorkerExecutor().shutdownNow();
+        getLexiconLookupResponseWorkerExecutor().shutdownNow();
+    }
 }
