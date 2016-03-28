@@ -11,18 +11,13 @@ import org.slf4j.LoggerFactory;
 /**
  *
  */
-public class LexiconApiClient {
+class LexiconApiClient {
 
     private static Logger logger = LoggerFactory.getLogger(LexiconApiClient.class);
 
     private final String apiKey;
     private static final String LEXICON_API_ENDPOINT = "https://api.gavagai.se/v3/lexicon";
 
-    public static void main(String[] args) throws Exception {
-        LexiconApiClient client = new LexiconApiClient("4c775d38fe2d12c43d99858dd0130fa0");
-        JSONObject response = client.process("h&m", "sv");
-        logger.info("response size {}", response.length());
-    }
 
     LexiconApiClient(String apiKey) {
         this.apiKey = apiKey;
