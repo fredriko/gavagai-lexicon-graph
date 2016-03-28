@@ -39,18 +39,16 @@ public class GraphCreator {
         OptionSet options = null;
         try {
             options = new OptionParser("a:d:ml:t:h").parse(args);
-            if (options.has("h") || !(options.has("a") && options.has("d") && options.has("l") && options.has("t"))) {
-                GraphCreator.printUsage();
-                System.exit(1);
-            }
         } catch (Throwable t) {
             System.err.println("\nError: " + t.getMessage() + ". Exiting.\n");
             GraphCreator.printUsage();
             System.exit(1);
         }
 
-        GraphCreator.printUsage();
-        System.exit(1);
+        if (options.has("h") || !(options.has("a") && options.has("d") && options.has("l") && options.has("t"))) {
+            GraphCreator.printUsage();
+            System.exit(1);
+        }
 
         GraphCreator populator = new GraphCreator(
                 (String) options.valueOf("a"),
