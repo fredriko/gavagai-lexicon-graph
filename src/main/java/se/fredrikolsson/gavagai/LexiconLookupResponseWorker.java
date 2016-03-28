@@ -58,7 +58,7 @@ class LexiconLookupResponseWorker implements Runnable {
                 }
             } catch (InterruptedException e) {
                 logger.info("Interrupted! Aborting processing");
-                setRunning(false);
+                shutDown();
             } catch (Exception e) {
                 logger.error("Caught exception: {}", e.getMessage(), e);
             }
@@ -202,6 +202,11 @@ class LexiconLookupResponseWorker implements Runnable {
 
     private boolean isRunning() {
         return isRunning;
+    }
+
+    private void shutDown() {
+        setRunning(false);
+        getNeo4jDb().shutdown();
     }
 
     private void setRunning(boolean running) {
