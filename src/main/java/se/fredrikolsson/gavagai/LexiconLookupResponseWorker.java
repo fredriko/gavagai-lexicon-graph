@@ -29,8 +29,6 @@ class LexiconLookupResponseWorker implements Runnable {
     private final Map<String, Integer> seenTermsMap;
     private boolean isRunning;
     private int maxDepth;
-    // TODO log number of nodes persisted every 30 seconds or so
-    // TODO log size of queues at the same time
 
 
     LexiconLookupResponseWorker(
@@ -50,7 +48,6 @@ class LexiconLookupResponseWorker implements Runnable {
 
     @Override
     public void run() {
-        logger.info("Starting to run");
         while (isRunning()) {
             LookupResponse response;
             try {
@@ -60,7 +57,7 @@ class LexiconLookupResponseWorker implements Runnable {
                     persistNode4j(response);
                 }
             } catch (InterruptedException e) {
-                logger.error("Interrupted! Aborting processing: {}", e.getMessage(), e);
+                logger.info("Interrupted! Aborting processing");
                 setRunning(false);
             } catch (Exception e) {
                 logger.error("Caught exception: {}", e.getMessage(), e);
