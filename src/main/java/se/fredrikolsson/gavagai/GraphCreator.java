@@ -15,7 +15,7 @@ import java.util.concurrent.*;
  * shut down request workers, response workers,
  * TODO neo4j database (hook?), and print statistics
  * TODO handle ctrl-c via shut down hook
-
+ * <p>
  * TODO cannot handle / in target term: need url encoding of that particular case?
  * TODO add index to neo4j db to make searching for terms faster
  * TODO change to custom http client instead of unirest since it has problems with connection leaks (not consuming http entity)
@@ -27,7 +27,7 @@ class GraphCreator implements Stoppable {
 
     private final static int REQUEST_QUEUE_SIZE = 100000;
     private final static int RESPONSE_QUEUE_SIZE = 1000;
-    private final static int NUM_PRODUCER_THREADS = 200;
+    private final static int NUM_PRODUCER_THREADS = 100;
     private final static int DEFAULT_MAX_DISTANCE = 2;
 
     private final int maxDistance;
@@ -38,6 +38,9 @@ class GraphCreator implements Stoppable {
     private final ExecutorService lexiconLookupRequestWorkerExecutor;
     private final ExecutorService lexiconLookupResponseWorkerExecutor;
     private final ScheduledExecutorService stopperExecutor;
+    private LexiconLookupResponseWorker lexiconLookupResponseWorker;
+
+    private boolean isRunning;
 
     public static void main(String[] args) throws Exception {
 
@@ -61,11 +64,12 @@ class GraphCreator implements Stoppable {
                 options.has("m") ? Integer.valueOf((String) options.valueOf("m")) : DEFAULT_MAX_DISTANCE);
 
         populator.start();
+        Runtime.getRuntime().addShutdownHook(new Hook(populator));
         for (String term : (List<String>) options.valuesOf("t")) {
             populator.addLookupRequest(new LookupRequest(term, (String) options.valueOf("l")));
         }
-        // TODO remove when stopping criterion is in place.
-        Thread.sleep(1000000000);
+        populator.waitForStop();
+        logger.info("Exiting main program");
     }
 
     private static void printUsage() {
@@ -107,17 +111,33 @@ class GraphCreator implements Stoppable {
         logger.info("Starting GraphCreator");
         startLexiconLookupRequestWorkers(getNumProducerThreads(), getLexiconLookupRequestWorkerExecutor());
         logger.info("Starting a single LexiconLookupResponseWorker");
+
         getLexiconLookupResponseWorkerExecutor().execute(
                 new LexiconLookupResponseWorker(
                         getLookupRequestQueue(),
                         getLookupResponseQueue(),
                         getMaxDistance(),
                         getNeo4jDbName()));
+
         logger.info("Starting the Stopper watchdog");
         getStopperExecutor().scheduleAtFixedRate(new Stopper(this, getLookupRequestQueue()), 20, 10, TimeUnit.SECONDS);
+
+        setRunning(true);
+    }
+
+    private void waitForStop() {
+        while (isRunning()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                logger.debug("Done waiting for stoppage");
+                break;
+            }
+        }
     }
 
     private void addLookupRequest(LookupRequest request) {
+        logger.info("Adding lookup request: {}", request.toString());
         getLookupRequestQueue().add(request);
     }
 
@@ -165,6 +185,14 @@ class GraphCreator implements Stoppable {
         return neo4jDbName;
     }
 
+    private boolean isRunning() {
+        return isRunning;
+    }
+
+    private void setRunning(boolean running) {
+        isRunning = running;
+    }
+
     private void startLexiconLookupRequestWorkers(int numThreads, ExecutorService service) {
         logger.info("Starting {} LexiconLookupRequestWorkers", numThreads);
         for (int i = 0; i < numThreads; i++) {
@@ -175,9 +203,27 @@ class GraphCreator implements Stoppable {
 
     @Override
     public void stop() {
-        logger.info("Shutting down...");
-        getStopperExecutor().shutdownNow();
         getLexiconLookupRequestWorkerExecutor().shutdownNow();
         getLexiconLookupResponseWorkerExecutor().shutdownNow();
+        getStopperExecutor().shutdownNow();
+        setRunning(false);
     }
+
+    private static class Hook extends Thread {
+        private final Stoppable stoppable;
+        Hook(Stoppable stoppable) {
+            this.stoppable = stoppable;
+        }
+
+        @Override
+        public void run() {
+            logger.info("In Hook#run about to invoke stop");
+            getStoppable().stop();
+        }
+
+        Stoppable getStoppable() {
+            return stoppable;
+        }
+    }
+
 }
