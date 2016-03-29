@@ -56,14 +56,15 @@ class LexiconLookupResponseWorker implements Runnable {
                     createAddRequests(response, getMaxDepth(), getLookupRequestQueue(), getSeenTermsMap());
                     persistNode4j(response);
                 }
+                Thread.sleep(10);
             } catch (InterruptedException e) {
-                logger.info("Interrupted! Aborting processing");
+                logger.error("Interrupted! Aborting processing");
                 shutDown();
             } catch (Exception e) {
                 logger.error("Caught exception: {}", e.getMessage(), e);
             }
         }
-        logger.info("Exiting run method");
+        logger.debug("Exiting run method");
     }
 
     private void persistNode4j(LookupResponse response) throws JSONException {

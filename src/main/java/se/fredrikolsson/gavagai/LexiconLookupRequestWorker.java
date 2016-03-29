@@ -48,7 +48,7 @@ class LexiconLookupRequestWorker implements Runnable {
                     Thread.sleep(100);
                 }
             } catch (InterruptedException e) {
-                logger.info("Interrupted! Aborting processing.");
+                logger.error("Interrupted! Aborting processing.");
                 setRunning(false);
             } catch (Exception e) {
                 if (request != null) {
@@ -58,7 +58,7 @@ class LexiconLookupRequestWorker implements Runnable {
                 }
             }
         }
-        logger.info("Exiting run method");
+        logger.debug("Exiting run method");
     }
 
     private BlockingQueue<LookupRequest> getLookupRequestQueue() {
