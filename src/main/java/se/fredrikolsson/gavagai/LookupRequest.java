@@ -7,17 +7,17 @@ class LookupRequest {
 
     private final String term;
     private final String languageCode;
-    private int depth;
+    private int distance;
 
     LookupRequest(String term, String languageCode) {
         this.term = term;
         this.languageCode = languageCode;
-        setDepth(0);
+        setDistance(0);
     }
 
-    LookupRequest(String term, String languageCode, int currentDepth) {
+    LookupRequest(String term, String languageCode, int currentDistance) {
         this(term, languageCode);
-        setDepth(currentDepth);
+        setDistance(currentDistance);
     }
 
     String getTerm() {
@@ -28,20 +28,20 @@ class LookupRequest {
         return languageCode;
     }
 
-    int getDepth() {
-        return depth;
+    int getDistance() {
+        return distance;
     }
 
-    private void setDepth(int depth) {
-        this.depth = depth;
+    private void setDistance(int distance) {
+        this.distance = distance;
     }
 
     public String toString() {
         return "LookupRequest[" +
                 "term=" +
                 getTerm() +
-                ", depth=" +
-                getDepth() +
+                ", distance=" +
+                getDistance() +
                 "]";
     }
 }

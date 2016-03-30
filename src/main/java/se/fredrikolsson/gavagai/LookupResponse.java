@@ -16,13 +16,13 @@ class LookupResponse {
     private static Logger logger = LoggerFactory.getLogger(LookupResponse.class);
 
     private final JSONObject payload;
-    private final int currentDepth;
+    private final int currentDistance;
     private final String languageCode;
     private String targetTerm;
 
-    LookupResponse(JSONObject payload, int currentDepth, String languageCode, String targetTerm) {
+    LookupResponse(JSONObject payload, int currentDistance, String languageCode, String targetTerm) {
         this.payload = payload;
-        this.currentDepth = currentDepth;
+        this.currentDistance = currentDistance;
         this.languageCode = languageCode;
         setTargetTerm(targetTerm);
     }
@@ -35,8 +35,8 @@ class LookupResponse {
         return languageCode;
     }
 
-    int getCurrentDepth() {
-        return currentDepth;
+    int getCurrentDistance() {
+        return currentDistance;
     }
 
     private void setTargetTerm(String targetTerm) {
