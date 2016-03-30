@@ -38,17 +38,20 @@ class LexiconLookupRequestWorker implements Runnable {
                     if (rawResponse.get("semanticallySimilarWordFilaments") != null
                             && ((JSONArray) rawResponse.get("semanticallySimilarWordFilaments")).length() > 0) {
                         LookupResponse response =
-                                new LookupResponse(rawResponse, request.getDepth() + 1, request.getLanguageCode(), request.getTerm());
+                                new LookupResponse(rawResponse, request.getDistance() + 1, request.getLanguageCode(), request.getTerm());
                         getLookupResponseQueue().put(response);
-                        logger.info("Term: \"{}\" - got {} similar terms in {} milliseconds",
+                        /*
+                        logger.info("Term \"{}\" - got {} similar terms in {} milliseconds",
                                 request.getTerm(), response.getSemanticallySimilarTerms().size(), System.currentTimeMillis() - start);
+                                */
+                        logger.info("Got {} similar terms for \"{}\"", response.getSemanticallySimilarTerms().size(), request.getTerm());
                     } else {
-                        logger.warn("Found nothing in the lexicon for term: {}", request.getTerm());
+                        logger.info("Got no similar terms for \"{}\"", request.getTerm());
                     }
                     Thread.sleep(100);
                 }
             } catch (InterruptedException e) {
-                logger.error("Interrupted! Aborting processing.");
+                logger.debug("Interrupted! Aborting processing.");
                 setRunning(false);
             } catch (Exception e) {
                 if (request != null) {

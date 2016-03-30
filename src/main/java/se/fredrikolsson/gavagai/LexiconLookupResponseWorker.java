@@ -28,13 +28,13 @@ class LexiconLookupResponseWorker implements Runnable {
     private final GraphDatabaseService neo4jDb;
     private final Map<String, Integer> seenTermsMap;
     private boolean isRunning;
-    private int maxDepth;
+    private int maxDistance;
 
 
     LexiconLookupResponseWorker(
             BlockingQueue<LookupRequest> lookupRequestQueue,
             BlockingQueue<LookupResponse> lookupResponseQueue,
-            int maxDepth,
+            int maxDistance,
             String dbPath) {
 
         this.lookupRequestQueue = lookupRequestQueue;
@@ -42,7 +42,7 @@ class LexiconLookupResponseWorker implements Runnable {
         this.neo4jDb = new GraphDatabaseFactory().newEmbeddedDatabase(new File(dbPath));
         this.seenTermsMap = new TreeMap<>();
 
-        setMaxDepth(maxDepth);
+        setMaxDistance(maxDistance);
         setRunning(true);
     }
 
@@ -53,12 +53,12 @@ class LexiconLookupResponseWorker implements Runnable {
             try {
                 response = getLookupResponseQueue().take();
                 if (response != null) {
-                    createAddRequests(response, getMaxDepth(), getLookupRequestQueue(), getSeenTermsMap());
+                    createAddRequests(response, getMaxDistance(), getLookupRequestQueue(), getSeenTermsMap());
                     persistNode4j(response);
                 }
                 Thread.sleep(10);
             } catch (InterruptedException e) {
-                logger.error("Interrupted! Aborting processing");
+                logger.debug("Interrupted! Aborting processing");
                 shutDown();
             } catch (Exception e) {
                 logger.error("Caught exception: {}", e.getMessage(), e);
@@ -156,24 +156,27 @@ class LexiconLookupResponseWorker implements Runnable {
 
     private void createAddRequests(
             LookupResponse response,
-            int maxDepth,
+            int maxDistance,
             BlockingQueue<LookupRequest> lookupRequestQueue,
             Map<String, Integer> seenTermsMap) throws JSONException {
 
-        if (response.getCurrentDepth() < maxDepth) {
+        if (response.getCurrentDistance() < maxDistance) {
             List<String> terms = response.getSemanticallySimilarTerms();
             for (String term : terms) {
+                // Avoid issuing requests containing slash since a bug in the API prevents them from being fulfilled.
+                if (term.contains("/")) {
+                    continue;
+                }
                 if (!seenTermsMap.containsKey(term)) {
-                    lookupRequestQueue.add(new LookupRequest(term, response.getLanguageCode(), response.getCurrentDepth()));
+                    lookupRequestQueue.add(new LookupRequest(term, response.getLanguageCode(), response.getCurrentDistance()));
                     seenTermsMap.put(term, 1);
                 } else {
                     Integer c = seenTermsMap.get(term);
                     seenTermsMap.put(term, ++c);
-                    //logger.info("Will not create job for \"{}\": already seen the term {} times", term, c);
                 }
             }
         } else {
-            logger.info("Not spawning new requests. Current depth: {}, max depth: {}", response.getCurrentDepth(), maxDepth);
+            logger.debug("Not spawning new requests. Current distance: {}, max distance: {}", response.getCurrentDistance(), maxDistance);
         }
     }
 
@@ -214,12 +217,12 @@ class LexiconLookupResponseWorker implements Runnable {
         isRunning = running;
     }
 
-    private int getMaxDepth() {
-        return maxDepth;
+    private int getMaxDistance() {
+        return maxDistance;
     }
 
-    private void setMaxDepth(int maxDepth) {
-        this.maxDepth = maxDepth;
+    private void setMaxDistance(int maxDistance) {
+        this.maxDistance = maxDistance;
     }
 
     private Map<String, Integer> getSeenTermsMap() {
