@@ -6,6 +6,8 @@ import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.index.UniqueFactory;
+import org.neo4j.graphdb.schema.IndexDefinition;
+import org.neo4j.graphdb.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +46,41 @@ class LexiconLookupResponseWorker implements Runnable {
 
         setMaxDistance(maxDistance);
         setRunning(true);
+    }
+
+    void init() {
+        // Add index to Neo4j db, but make sure it doesn't already exist.
+        boolean indexExists = false;
+
+        Transaction tx = null;
+        try {
+            tx = this.neo4jDb.beginTx();
+            Iterable<IndexDefinition> indexDefinitions = this.neo4jDb.schema().getIndexes(TermLabel.TERM);
+
+            for (IndexDefinition indexDefinition : indexDefinitions) {
+                if (indexDefinition.getLabel().equals(TermLabel.TERM)) {
+                    indexExists = true;
+                    break;
+                }
+            }
+        } finally {
+            if (tx != null) {
+                tx.success();
+            }
+        }
+
+        if (!indexExists) {
+            try {
+                tx = this.neo4jDb.beginTx();
+                Schema schema = this.neo4jDb.schema();
+                schema.indexFor(TermLabel.TERM).on("name").create();
+                tx.success();
+            } finally {
+                if (tx != null) {
+                    tx.success();
+                }
+            }
+        }
     }
 
     @Override
@@ -160,7 +197,7 @@ class LexiconLookupResponseWorker implements Runnable {
             BlockingQueue<LookupRequest> lookupRequestQueue,
             Map<String, Integer> seenTermsMap) throws JSONException {
 
-        if (response.getCurrentDistance() < maxDistance) {
+        if (response.getCurrentDistance() <= maxDistance) {
             List<String> terms = response.getSemanticallySimilarTerms();
             for (String term : terms) {
                 // Avoid issuing requests containing slash since a bug in the API prevents them from being fulfilled.
@@ -168,7 +205,8 @@ class LexiconLookupResponseWorker implements Runnable {
                     continue;
                 }
                 if (!seenTermsMap.containsKey(term)) {
-                    lookupRequestQueue.add(new LookupRequest(term, response.getLanguageCode(), response.getCurrentDistance()));
+                    lookupRequestQueue.add(
+                            new LookupRequest(term, response.getLanguageCode(), response.getCurrentDistance()));
                     seenTermsMap.put(term, 1);
                 } else {
                     Integer c = seenTermsMap.get(term);
@@ -176,7 +214,8 @@ class LexiconLookupResponseWorker implements Runnable {
                 }
             }
         } else {
-            logger.debug("Not spawning new requests. Current distance: {}, max distance: {}", response.getCurrentDistance(), maxDistance);
+            logger.debug("Not spawning new requests. Current distance: {}, max distance: {}",
+                    response.getCurrentDistance(), maxDistance);
         }
     }
 

@@ -8,6 +8,7 @@ class LookupRequest {
     private final String term;
     private final String languageCode;
     private int distance;
+    private int numberOfLookupAttempts = 0;
 
     LookupRequest(String term, String languageCode) {
         this.term = term;
@@ -34,6 +35,14 @@ class LookupRequest {
 
     private void setDistance(int distance) {
         this.distance = distance;
+    }
+
+    int getNumberOfLookupAttempts() {
+        return numberOfLookupAttempts;
+    }
+
+    void increaseNumberOfLookupAttempts() {
+        this.numberOfLookupAttempts++;
     }
 
     public String toString() {
