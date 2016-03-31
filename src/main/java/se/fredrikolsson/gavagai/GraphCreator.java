@@ -11,13 +11,7 @@ import java.util.concurrent.*;
 /**
  * Class responsible for building a Neo4j graph database from entries in the Gavagai Living Lexicon.
  * <p>
- *     TODO set reasonable times for stopping criterion
  * TODO and print statistics: how many terms persisted, how many api calls made
- * TODO clean up logging: with the perspective of the console
- * <p>
- * TODO cannot handle / in target term: need url encoding of that particular case? Write JIRA!
- * TODO add index to neo4j db to make searching for terms faster
- * TODO change to custom http client instead of unirest since it has problems with connection leaks (not consuming http entity)
  */
 class GraphCreator implements Stoppable {
 
@@ -109,15 +103,17 @@ class GraphCreator implements Stoppable {
         startLexiconLookupRequestWorkers(getNumProducerThreads(), getLexiconLookupRequestWorkerExecutor());
         logger.info("Starting a single Lexicon Lookup Response Worker");
 
-        getLexiconLookupResponseWorkerExecutor().execute(
+        LexiconLookupResponseWorker responseWorker =
                 new LexiconLookupResponseWorker(
                         getLookupRequestQueue(),
                         getLookupResponseQueue(),
                         getMaxDistance(),
-                        getNeo4jDbName()));
+                        getNeo4jDbName());
+        responseWorker.init();
+        getLexiconLookupResponseWorkerExecutor().execute(responseWorker);
 
         logger.info("Starting the Stopper watchdog");
-        getStopperExecutor().scheduleAtFixedRate(new Stopper(this, getLookupRequestQueue()), 20, 10, TimeUnit.SECONDS);
+        getStopperExecutor().scheduleAtFixedRate(new Stopper(this, getLookupRequestQueue()), 45, 45, TimeUnit.SECONDS);
 
         setRunning(true);
     }
@@ -200,21 +196,32 @@ class GraphCreator implements Stoppable {
 
     @Override
     public void stop() {
-        getLexiconLookupRequestWorkerExecutor().shutdownNow();
+        List<Runnable> droppedTasks = getLexiconLookupRequestWorkerExecutor().shutdownNow();
+        if (droppedTasks.size() > 0) {
+            logger.info("Dropped {} lookup requests in order to shut down", droppedTasks.size());
+        }
         getLexiconLookupResponseWorkerExecutor().shutdownNow();
         getStopperExecutor().shutdownNow();
         setRunning(false);
     }
 
+    @Override
+    public boolean isStopped() {
+        return isRunning();
+    }
+
     private static class ShutDownHook extends Thread {
         private final Stoppable stoppable;
+
         ShutDownHook(Stoppable stoppable) {
             this.stoppable = stoppable;
         }
 
         @Override
         public void run() {
-            getStoppable().stop();
+            if (!getStoppable().isStopped()) {
+                getStoppable().stop();
+            }
         }
 
         Stoppable getStoppable() {
