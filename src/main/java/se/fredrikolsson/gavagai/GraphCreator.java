@@ -11,7 +11,9 @@ import java.util.concurrent.*;
 /**
  * Class responsible for building a Neo4j graph database from entries in the Gavagai Living Lexicon.
  * <p>
- * TODO and print statistics: how many terms persisted, how many api calls made
+ *     TODO rewrite all Neo4j code to use try-with-resources instead of Java 1.6 construct
+ * TODO comment code
+ * TODO README.md
  */
 class GraphCreator implements Stoppable {
 
@@ -32,6 +34,8 @@ class GraphCreator implements Stoppable {
     private final ScheduledExecutorService stopperExecutor;
 
     private boolean isRunning;
+    private long startTime;
+    private LexiconLookupResponseWorker responseWorker;
 
     public static void main(String[] args) throws Exception {
 
@@ -60,6 +64,7 @@ class GraphCreator implements Stoppable {
             populator.addLookupRequest(new LookupRequest(term, (String) options.valueOf("l")));
         }
         populator.awaitCompletion();
+        populator.logStatistics();
         logger.info("Exiting main program");
     }
 
@@ -100,6 +105,7 @@ class GraphCreator implements Stoppable {
 
     private void start() {
         logger.info("Starting Graph Creator");
+        setStartTime(System.currentTimeMillis());
         startLexiconLookupRequestWorkers(getNumProducerThreads(), getLexiconLookupRequestWorkerExecutor());
         logger.info("Starting a single Lexicon Lookup Response Worker");
 
@@ -110,10 +116,11 @@ class GraphCreator implements Stoppable {
                         getMaxDistance(),
                         getNeo4jDbName());
         responseWorker.init();
+        setResponseWorker(responseWorker);
         getLexiconLookupResponseWorkerExecutor().execute(responseWorker);
 
         logger.info("Starting the Stopper watchdog");
-        getStopperExecutor().scheduleAtFixedRate(new Stopper(this, getLookupRequestQueue()), 45, 45, TimeUnit.SECONDS);
+        getStopperExecutor().scheduleAtFixedRate(new Stopper(this, getLookupRequestQueue()), 120, 60, TimeUnit.SECONDS);
 
         setRunning(true);
     }
@@ -121,12 +128,23 @@ class GraphCreator implements Stoppable {
     private void awaitCompletion() {
         while (isRunning()) {
             try {
-                Thread.sleep(100);
+                Thread.sleep(1000);
+                logger.debug("Request Queue size: {} - Response Queue size: {}", getLookupRequestQueue().size(), getLookupResponseQueue().size());
             } catch (InterruptedException e) {
                 logger.debug("Done waiting for completion");
                 break;
             }
         }
+    }
+
+    private void logStatistics() {
+        logger.info(getResponseWorker().getStatisticsMessage(false));
+        long runningTime = System.currentTimeMillis() - getStartTime();
+        logger.info(String.format("Total running time: %d min, %d sec",
+                TimeUnit.MILLISECONDS.toMinutes(runningTime),
+                TimeUnit.MILLISECONDS.toSeconds(runningTime) -
+                        TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(runningTime))
+        ));
     }
 
     private void addLookupRequest(LookupRequest request) {
@@ -186,6 +204,22 @@ class GraphCreator implements Stoppable {
         isRunning = running;
     }
 
+    private LexiconLookupResponseWorker getResponseWorker() {
+        return responseWorker;
+    }
+
+    private void setResponseWorker(LexiconLookupResponseWorker responseWorker) {
+        this.responseWorker = responseWorker;
+    }
+
+    private long getStartTime() {
+        return startTime;
+    }
+
+    private void setStartTime(long startTime) {
+        this.startTime = startTime;
+    }
+
     private void startLexiconLookupRequestWorkers(int numThreads, ExecutorService service) {
         logger.info("Starting {} Lexicon Lookup Request Workers", numThreads);
         for (int i = 0; i < numThreads; i++) {
@@ -196,13 +230,15 @@ class GraphCreator implements Stoppable {
 
     @Override
     public void stop() {
-        List<Runnable> droppedTasks = getLexiconLookupRequestWorkerExecutor().shutdownNow();
-        if (droppedTasks.size() > 0) {
-            logger.info("Dropped {} lookup requests in order to shut down", droppedTasks.size());
+        if (!isStopped()) {
+            setRunning(false);
+            List<Runnable> droppedTasks = getLexiconLookupRequestWorkerExecutor().shutdownNow();
+            if (droppedTasks.size() > 0) {
+                logger.info("Dropped {} lookup requests in order to shut down", droppedTasks.size());
+            }
+            getLexiconLookupResponseWorkerExecutor().shutdownNow();
+            getStopperExecutor().shutdownNow();
         }
-        getLexiconLookupResponseWorkerExecutor().shutdownNow();
-        getStopperExecutor().shutdownNow();
-        setRunning(false);
     }
 
     @Override

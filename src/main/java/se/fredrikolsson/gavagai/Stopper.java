@@ -28,7 +28,6 @@ class Stopper implements Runnable {
         if (isInitializeShutdown()) {
             if (numRequests == 0) {
                 logger.info("No more Lexicon Lookup Requests available. Shutting down.");
-                // Make sure to only call stop once
                 getStoppable().stop();
             } else {
                 setInitializeShutdown(false);

@@ -5,16 +5,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.graphdb.index.UniqueFactory;
 import org.neo4j.graphdb.schema.IndexDefinition;
-import org.neo4j.graphdb.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 
 
@@ -28,7 +24,8 @@ class LexiconLookupResponseWorker implements Runnable {
     private final BlockingQueue<LookupRequest> lookupRequestQueue;
     private final BlockingQueue<LookupResponse> lookupResponseQueue;
     private final GraphDatabaseService neo4jDb;
-    private final Map<String, Integer> seenTermsMap;
+    private final Map<String, Integer> lookupRequestsMadeForTerms;
+    private final Map<String, Integer> termsPersisted;
     private boolean isRunning;
     private int maxDistance;
 
@@ -42,45 +39,16 @@ class LexiconLookupResponseWorker implements Runnable {
         this.lookupRequestQueue = lookupRequestQueue;
         this.lookupResponseQueue = lookupResponseQueue;
         this.neo4jDb = new GraphDatabaseFactory().newEmbeddedDatabase(new File(dbPath));
-        this.seenTermsMap = new TreeMap<>();
+        this.lookupRequestsMadeForTerms = new TreeMap<>();
+        this.termsPersisted = new TreeMap<>();
 
         setMaxDistance(maxDistance);
         setRunning(true);
     }
 
     void init() {
-        // Add index to Neo4j db, but make sure it doesn't already exist.
-        boolean indexExists = false;
-
-        Transaction tx = null;
-        try {
-            tx = this.neo4jDb.beginTx();
-            Iterable<IndexDefinition> indexDefinitions = this.neo4jDb.schema().getIndexes(TermLabel.TERM);
-
-            for (IndexDefinition indexDefinition : indexDefinitions) {
-                if (indexDefinition.getLabel().equals(TermLabel.TERM)) {
-                    indexExists = true;
-                    break;
-                }
-            }
-        } finally {
-            if (tx != null) {
-                tx.success();
-            }
-        }
-
-        if (!indexExists) {
-            try {
-                tx = this.neo4jDb.beginTx();
-                Schema schema = this.neo4jDb.schema();
-                schema.indexFor(TermLabel.TERM).on("name").create();
-                tx.success();
-            } finally {
-                if (tx != null) {
-                    tx.success();
-                }
-            }
-        }
+        setUpDbConstraint();
+        setUpDbIndex();
     }
 
     @Override
@@ -90,12 +58,12 @@ class LexiconLookupResponseWorker implements Runnable {
             try {
                 response = getLookupResponseQueue().take();
                 if (response != null) {
-                    createAddRequests(response, getMaxDistance(), getLookupRequestQueue(), getSeenTermsMap());
-                    persistNode4j(response);
+                    createAddRequests(response, getMaxDistance(), getLookupRequestQueue(), getLookupRequestsMadeForTerms());
+                    persistInDb(response);
                 }
                 Thread.sleep(10);
             } catch (InterruptedException e) {
-                logger.debug("Interrupted! Aborting processing");
+                logger.error("Interrupted! Aborting processing");
                 shutDown();
             } catch (Exception e) {
                 logger.error("Caught exception: {}", e.getMessage(), e);
@@ -104,7 +72,31 @@ class LexiconLookupResponseWorker implements Runnable {
         logger.debug("Exiting run method");
     }
 
-    private void persistNode4j(LookupResponse response) throws JSONException {
+    String getStatisticsMessage(boolean verbose) {
+        StringBuilder s = new StringBuilder("Processed a total of ").append(getTermsPersisted().size()).append(" unique terms\n");
+        if (verbose) {
+            for (Map.Entry<String, Integer> entry : getTermsPersisted().entrySet()) {
+                s.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+            }
+        }
+        return s.toString();
+    }
+
+
+    private Map<String, Integer> getTermsPersisted() {
+        return termsPersisted;
+    }
+
+    private void updateTermsPersisted(Map<String, Integer> termsPersisted, String term) {
+        if (termsPersisted.containsKey(term)) {
+            int c = termsPersisted.get(term);
+            termsPersisted.put(term, ++c);
+        } else {
+            termsPersisted.put(term, 1);
+        }
+    }
+
+    private void persistInDb(LookupResponse response) throws JSONException {
         Transaction tx = null;
         try {
             tx = getNeo4jDb().beginTx();
@@ -117,7 +109,8 @@ class LexiconLookupResponseWorker implements Runnable {
                 String semanticLabel = createSemanticLabel(labels);
                 JSONArray words = n.getJSONObject(i).getJSONArray("words");
                 for (int j = 0; j < words.length(); j++) {
-                    Node node = getOrCreateNodeWithUniqueFactory(words.getJSONObject(j).getString("word"), getNeo4jDb());
+                    updateTermsPersisted(getTermsPersisted(), words.getJSONObject(j).getString("word"));
+                    Node node = getOrCreateNode(getNeo4jDb(), words.getJSONObject(j).getString("word"));
                     node.addLabel(TermLabel.TERM);
 
                     Iterable<Relationship> relationships = targetTerm.getRelationships();
@@ -146,6 +139,25 @@ class LexiconLookupResponseWorker implements Runnable {
     }
 
 
+    private Node getOrCreateNode(GraphDatabaseService graphDb, String term) {
+        Node result = null;
+        ResourceIterator<Node> resultIterator;
+        Transaction tx = null;
+        try {
+            tx = graphDb.beginTx();
+            String queryString = "MERGE (n:TERM {name: {name}}) RETURN n";
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put("name", term);
+            resultIterator = graphDb.execute(queryString, parameters).columnAs("n");
+            result = resultIterator.next();
+        } finally {
+            if (tx != null) {
+                tx.success();
+            }
+        }
+        return result;
+    }
+
     private String createSemanticLabel(JSONArray labels) throws JSONException {
         if (labels.length() == 0) {
             return "";
@@ -171,7 +183,7 @@ class LexiconLookupResponseWorker implements Runnable {
     }
 
     private Node createTargetTermNode(LookupResponse response) throws JSONException {
-        Node targetTerm = getOrCreateNodeWithUniqueFactory(response.getTargetTerm(), getNeo4jDb());
+        Node targetTerm = getOrCreateNode(getNeo4jDb(), response.getTargetTerm());
         targetTerm.addLabel(TermLabel.TERM);
         if (!targetTerm.hasProperty("numTokens")) {
             targetTerm.setProperty("numTokens", computeNumWhitespaces(response.getTargetTerm()) + 1);
@@ -195,7 +207,7 @@ class LexiconLookupResponseWorker implements Runnable {
             LookupResponse response,
             int maxDistance,
             BlockingQueue<LookupRequest> lookupRequestQueue,
-            Map<String, Integer> seenTermsMap) throws JSONException {
+            Map<String, Integer> lookupRequestsMadeForTerms) throws JSONException {
 
         if (response.getCurrentDistance() <= maxDistance) {
             List<String> terms = response.getSemanticallySimilarTerms();
@@ -204,13 +216,12 @@ class LexiconLookupResponseWorker implements Runnable {
                 if (term.contains("/")) {
                     continue;
                 }
-                if (!seenTermsMap.containsKey(term)) {
-                    lookupRequestQueue.add(
-                            new LookupRequest(term, response.getLanguageCode(), response.getCurrentDistance()));
-                    seenTermsMap.put(term, 1);
+                if (!lookupRequestsMadeForTerms.containsKey(term)) {
+                    lookupRequestQueue.add(new LookupRequest(term, response.getLanguageCode(), response.getCurrentDistance()));
+                    lookupRequestsMadeForTerms.put(term, 1);
                 } else {
-                    Integer c = seenTermsMap.get(term);
-                    seenTermsMap.put(term, ++c);
+                    Integer c = lookupRequestsMadeForTerms.get(term);
+                    lookupRequestsMadeForTerms.put(term, ++c);
                 }
             }
         } else {
@@ -230,6 +241,35 @@ class LexiconLookupResponseWorker implements Runnable {
         }
         return numSpaces;
     }
+
+    private void setUpDbConstraint() {
+        try (Transaction tx = getNeo4jDb().beginTx()) {
+            try {
+                getNeo4jDb().schema()
+                        .constraintFor(TermLabel.TERM)
+                        .assertPropertyIsUnique("name")
+                        .create();
+            } catch (ConstraintViolationException e) {
+                logger.warn("Database constraint already exists!");
+            }
+            tx.success();
+        }
+    }
+
+    private void setUpDbIndex() {
+        try (Transaction tx = getNeo4jDb().beginTx()) {
+            Iterator<IndexDefinition> indices = getNeo4jDb().schema().getIndexes(TermLabel.TERM).iterator();
+            if (indices == null || !indices.hasNext()) {
+                try {
+                    getNeo4jDb().schema().indexFor(TermLabel.TERM).on("name").create();
+                } catch (ConstraintViolationException e) {
+                    logger.warn("Index already defined for label: {}", TermLabel.TERM);
+                }
+            }
+            tx.success();
+        }
+    }
+
 
     private GraphDatabaseService getNeo4jDb() {
         return neo4jDb;
@@ -264,22 +304,10 @@ class LexiconLookupResponseWorker implements Runnable {
         this.maxDistance = maxDistance;
     }
 
-    private Map<String, Integer> getSeenTermsMap() {
-        return seenTermsMap;
+    private Map<String, Integer> getLookupRequestsMadeForTerms() {
+        return lookupRequestsMadeForTerms;
     }
 
-    private static Node getOrCreateNodeWithUniqueFactory(String nodeName, GraphDatabaseService graphDb) {
-        UniqueFactory<Node> factory = new UniqueFactory.UniqueNodeFactory(
-                graphDb, "index") {
-            @Override
-            protected void initialize(Node created,
-                                      Map<String, Object> properties) {
-                created.setProperty("name", properties.get("name"));
-            }
-        };
-
-        return factory.getOrCreate("name", nodeName);
-    }
 
     private enum TermLabel implements Label {
         TERM
