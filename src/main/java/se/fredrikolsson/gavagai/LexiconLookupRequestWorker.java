@@ -9,6 +9,10 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.BlockingQueue;
 
 /**
+ * Class implementing a worker responsible for retrieving a pending request to lookup information
+ * in Gavagai's semantic memories from one queue, and pass the response on to another queue.
+ * <p>
+ * The application will use many workers of this type.
  */
 class LexiconLookupRequestWorker implements Runnable {
 
@@ -19,12 +23,17 @@ class LexiconLookupRequestWorker implements Runnable {
     private final LexiconApiClient lexiconApiClient;
     private boolean isRunning;
 
-    LexiconLookupRequestWorker(BlockingQueue<LookupRequest> lookupRequestQueue, BlockingQueue<LookupResponse> lookupResponseQueue, String apiKey) {
+
+    LexiconLookupRequestWorker(BlockingQueue<LookupRequest> lookupRequestQueue,
+                               BlockingQueue<LookupResponse> lookupResponseQueue,
+                               String apiKey) {
+
         this.lookupRequestQueue = lookupRequestQueue;
         this.lookupResponseQueue = lookupResponseQueue;
         this.lexiconApiClient = new LexiconApiClient(apiKey);
         setRunning(true);
     }
+
 
     @Override
     public void run() {
@@ -33,14 +42,23 @@ class LexiconLookupRequestWorker implements Runnable {
             try {
                 request = getLookupRequestQueue().take();
                 if (request != null) {
-                    JSONObject rawResponse = getLexiconApiClient().process(request.getTerm(), request.getLanguageCode());
+                    JSONObject rawResponse =
+                            getLexiconApiClient().process(request.getTerm(), request.getLanguageCode());
+
                     // Continue processing a response only if there is useful information in it
                     if (rawResponse.get("semanticallySimilarWordFilaments") != null
                             && ((JSONArray) rawResponse.get("semanticallySimilarWordFilaments")).length() > 0) {
-                        LookupResponse response =
-                                new LookupResponse(rawResponse, request.getDistance() + 1, request.getLanguageCode(), request.getTerm());
+                        LookupResponse response = new LookupResponse(
+                                rawResponse,
+                                request.getDistance() + 1,
+                                request.getLanguageCode(),
+                                request.getTerm());
+
                         getLookupResponseQueue().put(response);
-                        logger.info("At distance {}, got {} similar terms for \"{}\"", request.getDistance(), response.getSemanticallySimilarTerms().size(), request.getTerm());
+                        logger.info("At distance {}, got {} similar terms for \"{}\"",
+                                request.getDistance(),
+                                response.getSemanticallySimilarTerms().size(),
+                                request.getTerm());
                     } else {
                         logger.info("Got no similar terms for \"{}\"", request.getTerm());
                     }
@@ -69,21 +87,26 @@ class LexiconLookupRequestWorker implements Runnable {
         logger.debug("Exiting run method");
     }
 
+
     private BlockingQueue<LookupRequest> getLookupRequestQueue() {
         return lookupRequestQueue;
     }
+
 
     private BlockingQueue<LookupResponse> getLookupResponseQueue() {
         return lookupResponseQueue;
     }
 
+
     private LexiconApiClient getLexiconApiClient() {
         return lexiconApiClient;
     }
 
+
     private boolean isRunning() {
         return isRunning;
     }
+
 
     private void setRunning(boolean running) {
         isRunning = running;

@@ -15,7 +15,10 @@ import java.util.concurrent.BlockingQueue;
 
 
 /**
- *
+ * Class responsible for processing a queue of responses obtained from Gavagai's semantic memories,
+ * and persist them in Neo4j.
+ * <p>
+ * There will only be one instance of this class present in the application.
  */
 class LexiconLookupResponseWorker implements Runnable {
 
@@ -46,10 +49,12 @@ class LexiconLookupResponseWorker implements Runnable {
         setRunning(true);
     }
 
+
     void init() {
         setUpDbConstraint();
         setUpDbIndex();
     }
+
 
     @Override
     public void run() {
@@ -58,12 +63,18 @@ class LexiconLookupResponseWorker implements Runnable {
             try {
                 response = getLookupResponseQueue().take();
                 if (response != null) {
-                    createAddRequests(response, getMaxDistance(), getLookupRequestQueue(), getLookupRequestsMadeForTerms());
+
+                    createAddRequests(
+                            response,
+                            getMaxDistance(),
+                            getLookupRequestQueue(),
+                            getLookupRequestsMadeForTerms());
+
                     persistInDb(response);
                 }
                 Thread.sleep(10);
             } catch (InterruptedException e) {
-                logger.error("Interrupted! Aborting processing");
+                logger.debug("Interrupted! Aborting processing");
                 shutDown();
             } catch (Exception e) {
                 logger.error("Caught exception: {}", e.getMessage(), e);
@@ -72,11 +83,15 @@ class LexiconLookupResponseWorker implements Runnable {
         logger.debug("Exiting run method");
     }
 
+
     String getStatisticsMessage(boolean verbose) {
-        StringBuilder s = new StringBuilder("Processed a total of ").append(getTermsPersisted().size()).append(" unique terms\n");
+        StringBuilder s = new StringBuilder("Processed a total of ")
+                .append(getTermsPersisted().size())
+                .append(" unique terms");
+
         if (verbose) {
             for (Map.Entry<String, Integer> entry : getTermsPersisted().entrySet()) {
-                s.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+                s.append("\n").append(entry.getKey()).append(": ").append(entry.getValue());
             }
         }
         return s.toString();
@@ -87,6 +102,7 @@ class LexiconLookupResponseWorker implements Runnable {
         return termsPersisted;
     }
 
+
     private void updateTermsPersisted(Map<String, Integer> termsPersisted, String term) {
         if (termsPersisted.containsKey(term)) {
             int c = termsPersisted.get(term);
@@ -96,10 +112,9 @@ class LexiconLookupResponseWorker implements Runnable {
         }
     }
 
+
     private void persistInDb(LookupResponse response) throws JSONException {
-        Transaction tx = null;
-        try {
-            tx = getNeo4jDb().beginTx();
+        try (Transaction tx = getNeo4jDb().beginTx()) {
 
             Node targetTerm = createTargetTermNode(response);
 
@@ -131,32 +146,24 @@ class LexiconLookupResponseWorker implements Runnable {
                 }
             }
             tx.success();
-        } finally {
-            if (tx != null) {
-                tx.close();
-            }
         }
     }
 
 
     private Node getOrCreateNode(GraphDatabaseService graphDb, String term) {
-        Node result = null;
+        Node result;
         ResourceIterator<Node> resultIterator;
-        Transaction tx = null;
-        try {
-            tx = graphDb.beginTx();
+        try (Transaction tx = graphDb.beginTx()) {
             String queryString = "MERGE (n:TERM {name: {name}}) RETURN n";
             Map<String, Object> parameters = new HashMap<>();
             parameters.put("name", term);
             resultIterator = graphDb.execute(queryString, parameters).columnAs("n");
             result = resultIterator.next();
-        } finally {
-            if (tx != null) {
-                tx.success();
-            }
+            tx.success();
         }
         return result;
     }
+
 
     private String createSemanticLabel(JSONArray labels) throws JSONException {
         if (labels.length() == 0) {
@@ -182,6 +189,7 @@ class LexiconLookupResponseWorker implements Runnable {
         return left.length() > 3 ? left.toString().trim() : "";
     }
 
+
     private Node createTargetTermNode(LookupResponse response) throws JSONException {
         Node targetTerm = getOrCreateNode(getNeo4jDb(), response.getTargetTerm());
         targetTerm.addLabel(TermLabel.TERM);
@@ -202,6 +210,7 @@ class LexiconLookupResponseWorker implements Runnable {
         }
         return targetTerm;
     }
+
 
     private void createAddRequests(
             LookupResponse response,
@@ -230,6 +239,7 @@ class LexiconLookupResponseWorker implements Runnable {
         }
     }
 
+
     private int computeNumWhitespaces(String input) {
         int numSpaces = 0;
         int i = 0;
@@ -241,6 +251,7 @@ class LexiconLookupResponseWorker implements Runnable {
         }
         return numSpaces;
     }
+
 
     private void setUpDbConstraint() {
         try (Transaction tx = getNeo4jDb().beginTx()) {
@@ -255,6 +266,7 @@ class LexiconLookupResponseWorker implements Runnable {
             tx.success();
         }
     }
+
 
     private void setUpDbIndex() {
         try (Transaction tx = getNeo4jDb().beginTx()) {
@@ -275,34 +287,42 @@ class LexiconLookupResponseWorker implements Runnable {
         return neo4jDb;
     }
 
+
     private BlockingQueue<LookupRequest> getLookupRequestQueue() {
         return lookupRequestQueue;
     }
+
 
     private BlockingQueue<LookupResponse> getLookupResponseQueue() {
         return lookupResponseQueue;
     }
 
+
     private boolean isRunning() {
         return isRunning;
     }
+
 
     private void shutDown() {
         setRunning(false);
         getNeo4jDb().shutdown();
     }
 
+
     private void setRunning(boolean running) {
         isRunning = running;
     }
+
 
     private int getMaxDistance() {
         return maxDistance;
     }
 
+
     private void setMaxDistance(int maxDistance) {
         this.maxDistance = maxDistance;
     }
+
 
     private Map<String, Integer> getLookupRequestsMadeForTerms() {
         return lookupRequestsMadeForTerms;
@@ -312,6 +332,7 @@ class LexiconLookupResponseWorker implements Runnable {
     private enum TermLabel implements Label {
         TERM
     }
+
 
     private enum TermRelation implements RelationshipType {
         NEIGHBOR

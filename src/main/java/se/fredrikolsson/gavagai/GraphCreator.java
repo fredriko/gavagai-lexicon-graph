@@ -10,9 +10,10 @@ import java.util.concurrent.*;
 
 /**
  * Class responsible for building a Neo4j graph database from entries in the Gavagai Living Lexicon.
- * <p>
- *     TODO rewrite all Neo4j code to use try-with-resources instead of Java 1.6 construct
- * TODO comment code
+ * Invoke {@link se.fredrikolsson.gavagai.GraphCreator} without command line arguments to see usage
+ * information.
+ *
+ *
  * TODO README.md
  */
 class GraphCreator implements Stoppable {
@@ -36,6 +37,7 @@ class GraphCreator implements Stoppable {
     private boolean isRunning;
     private long startTime;
     private LexiconLookupResponseWorker responseWorker;
+
 
     public static void main(String[] args) throws Exception {
 
@@ -64,26 +66,9 @@ class GraphCreator implements Stoppable {
             populator.addLookupRequest(new LookupRequest(term, (String) options.valueOf("l")));
         }
         populator.awaitCompletion();
-        populator.logStatistics();
         logger.info("Exiting main program");
     }
 
-    private static void printUsage() {
-        String s = "Usage:\n" +
-                "  -a <apiKey> -d <dBDir> -l <lang> -t <term> (-m <maxDistance>)\n" +
-                "  -h\n\n" +
-                "where  -a <apiKey> is your Gavagai API key, obtained from gavagai.se\n" +
-                "       -d <dBDir>  is the empty directory in which to store the resulting Neo4j graph database\n" +
-                "       -l <lang>   is the iso 639-1 two character code for the langugage to look up. Check\n" +
-                "                   http://lexicon.gavagai.se for available languages\n" +
-                "       -t <term>   is the term from which you wish to start your graph. This option can be\n" +
-                "                   specified multiple times to generate a graph with many starting terms\n" +
-                "       -m <dist>   is the maximum distance, in the graph, allowed from a starting term before\n" +
-                "                   the program terminates. Optional. Default value is " + DEFAULT_MAX_DISTANCE + "\n" +
-                "       -h          prints this usage information\n";
-
-        System.out.println(s);
-    }
 
     private GraphCreator(String apiKey, String neo4jDbName, int maxDistance) {
         this.apiKey = apiKey;
@@ -102,6 +87,7 @@ class GraphCreator implements Stoppable {
         this.lexiconLookupResponseWorkerExecutor = Executors.newSingleThreadExecutor();
         this.stopperExecutor = Executors.newSingleThreadScheduledExecutor(new NamingThreadFactory("stopper"));
     }
+
 
     private void start() {
         logger.info("Starting Graph Creator");
@@ -125,6 +111,7 @@ class GraphCreator implements Stoppable {
         setRunning(true);
     }
 
+
     private void awaitCompletion() {
         while (isRunning()) {
             try {
@@ -137,6 +124,7 @@ class GraphCreator implements Stoppable {
         }
     }
 
+
     private void logStatistics() {
         logger.info(getResponseWorker().getStatisticsMessage(false));
         long runningTime = System.currentTimeMillis() - getStartTime();
@@ -147,78 +135,115 @@ class GraphCreator implements Stoppable {
         ));
     }
 
+
     private void addLookupRequest(LookupRequest request) {
         logger.info("Adding term to lookup in Gavagai Living Lexicon: \"{}\"", request.getTerm());
         getLookupRequestQueue().add(request);
     }
 
+
+    private static void printUsage() {
+        String s = "Usage:\n" +
+                "  -a <apiKey> -d <dBDir> -l <lang> -t <term> (-m <maxDistance>)\n" +
+                "  -h\n\n" +
+                "where  -a <apiKey> is your Gavagai API key, obtained from gavagai.se\n" +
+                "       -d <dBDir>  is the empty directory in which to store the resulting Neo4j graph database\n" +
+                "       -l <lang>   is the iso 639-1 two character code for the langugage to look up. Check\n" +
+                "                   http://lexicon.gavagai.se for available languages\n" +
+                "       -t <term>   is the term from which you wish to start your graph. This option can be\n" +
+                "                   specified multiple times to generate a graph with many starting terms\n" +
+                "       -m <dist>   is the maximum distance, in the graph, allowed from a starting term before\n" +
+                "                   the program terminates. Optional. Default value is " + DEFAULT_MAX_DISTANCE + "\n" +
+                "       -h          prints this usage information\n";
+
+        System.out.println(s);
+    }
+
+
     private int getNumProducerThreads() {
         return NUM_PRODUCER_THREADS;
     }
+
 
     private String getApiKey() {
         return apiKey;
     }
 
+
     private BlockingQueue<LookupRequest> getLookupRequestQueue() {
         return lookupRequestQueue;
     }
+
 
     private BlockingQueue<LookupResponse> getLookupResponseQueue() {
         return lookupResponseQueue;
     }
 
+
     private ExecutorService getLexiconLookupRequestWorkerExecutor() {
         return lexiconLookupRequestWorkerExecutor;
     }
+
 
     private ExecutorService getLexiconLookupResponseWorkerExecutor() {
         return lexiconLookupResponseWorkerExecutor;
     }
 
+
     private ScheduledExecutorService getStopperExecutor() {
         return stopperExecutor;
     }
+
 
     private int getMaxDistance() {
         return maxDistance;
     }
 
+
     private int getRequestQueueSize() {
         return REQUEST_QUEUE_SIZE;
     }
+
 
     private int getResponseQueueSize() {
         return RESPONSE_QUEUE_SIZE;
     }
 
+
     private String getNeo4jDbName() {
         return neo4jDbName;
     }
+
 
     private boolean isRunning() {
         return isRunning;
     }
 
+
     private void setRunning(boolean running) {
         isRunning = running;
     }
+
 
     private LexiconLookupResponseWorker getResponseWorker() {
         return responseWorker;
     }
 
+
     private void setResponseWorker(LexiconLookupResponseWorker responseWorker) {
         this.responseWorker = responseWorker;
     }
+
 
     private long getStartTime() {
         return startTime;
     }
 
+
     private void setStartTime(long startTime) {
         this.startTime = startTime;
     }
+
 
     private void startLexiconLookupRequestWorkers(int numThreads, ExecutorService service) {
         logger.info("Starting {} Lexicon Lookup Request Workers", numThreads);
@@ -227,6 +252,7 @@ class GraphCreator implements Stoppable {
                     new LexiconLookupRequestWorker(getLookupRequestQueue(), getLookupResponseQueue(), getApiKey()));
         }
     }
+
 
     @Override
     public void stop() {
@@ -238,13 +264,16 @@ class GraphCreator implements Stoppable {
             }
             getLexiconLookupResponseWorkerExecutor().shutdownNow();
             getStopperExecutor().shutdownNow();
+            logStatistics();
         }
     }
 
+
     @Override
     public boolean isStopped() {
-        return isRunning();
+        return !isRunning();
     }
+
 
     private static class ShutDownHook extends Thread {
         private final Stoppable stoppable;
@@ -259,6 +288,7 @@ class GraphCreator implements Stoppable {
                 getStoppable().stop();
             }
         }
+
 
         Stoppable getStoppable() {
             return stoppable;

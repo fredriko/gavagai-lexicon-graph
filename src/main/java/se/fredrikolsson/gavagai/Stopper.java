@@ -6,7 +6,8 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.BlockingQueue;
 
 /**
- *
+ * Class responsible for keeping track of the state of the process of retrieving information from Gavagai's
+ * semantic memories, and for stopping the application when certain criteria is met.
  */
 class Stopper implements Runnable {
 
@@ -22,6 +23,7 @@ class Stopper implements Runnable {
         this.lookupRequestsQueue = lookupRequestQueue;
     }
 
+
     @Override
     public void run() {
         int numRequests = getLookupRequestsQueue().size();
@@ -31,7 +33,8 @@ class Stopper implements Runnable {
                 getStoppable().stop();
             } else {
                 setInitializeShutdown(false);
-                logger.info("{} Lexicon Lookup Requests await processing. Revoking initiated stopping criterion.", numRequests);
+                logger.info("{} Lexicon Lookup Requests await processing. Revoking initiated stopping criterion.",
+                        numRequests);
             }
         } else {
             if (numRequests == 0) {
@@ -43,17 +46,21 @@ class Stopper implements Runnable {
         }
     }
 
+
     private boolean isInitializeShutdown() {
         return initializeShutdown;
     }
+
 
     private void setInitializeShutdown(boolean initializeShutdown) {
         this.initializeShutdown = initializeShutdown;
     }
 
+
     private Stoppable getStoppable() {
         return stoppable;
     }
+
 
     private BlockingQueue<LookupRequest> getLookupRequestsQueue() {
         return lookupRequestsQueue;

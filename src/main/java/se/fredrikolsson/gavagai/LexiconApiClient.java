@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- *
+ * Class for retrieving information from Gavagai's semantic memories, aka Living Lexicon.
  */
 class LexiconApiClient {
 
@@ -22,6 +22,7 @@ class LexiconApiClient {
     LexiconApiClient(String apiKey) {
         this.apiKey = apiKey;
     }
+
 
     JSONObject process(String word, String iso639LanguageCode) throws Exception {
 
@@ -43,6 +44,7 @@ class LexiconApiClient {
     private String getApiKey() {
         return apiKey;
     }
+
 
     private static String getLexiconApiEndpoint() {
         return LEXICON_API_ENDPOINT;

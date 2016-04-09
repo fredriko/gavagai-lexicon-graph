@@ -1,9 +1,9 @@
 package se.fredrikolsson.gavagai;
 
 /**
- *
+ * Interface intended for classes that can be stopped.
  */
-public interface Stoppable {
+interface Stoppable {
 
     void stop();
 
