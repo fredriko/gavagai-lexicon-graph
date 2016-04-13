@@ -38,4 +38,35 @@ Get information for the term "no-fly zone" and its neighbors:
     
 Replace `<api-key>` with your own Gavagai Api key. The above command creates a Neo4j database in `/tmp/lexicon-1` by retrieving all semantically similar neighbors for the term "no-fly zone" in Gavagai's English semantic memory, up to and including those that are 5 hops away.
 
-Once the data has been retrieved, start Neo4j and point it to `/tmp/lexicon-1`.
+Once the data has been retrieved, start Neo4j and point it to `/tmp/lexicon-1`. Issue a Cypher query like the following:
+
+    MATCH (a)-[r1:NEIGHBOR]-(b)-[r2:NEIGHBOR]-(c)-[r3:NEIGHBOR]-(d)
+    WHERE r1.strength > 0.5 AND r2.strength > 0.5 AND r3.strength > 0.5
+    RETURN r1, r2, r3
+    
+and you will end up with a number of tuples, each of which contains terms that are fairly tight connected when it comes to their use in general language. Here's the output I got for the above question:
+
+graph (61).svg
+
+Another example. If you wish to find out the immediate neigborhood of our initial target term, "no-fly zone", issue the following query:
+
+    MATCH (a {name:"no-fly zone"})-[r1:NEIGHBOR]-(b)-[r2:NEIGHBOR]-(c)-[r3:NEIGHBOR]-(d)
+    WHERE r1.strength > 0.3 AND r2.strength > 0.3 AND r3.strength > 0.3
+    RETURN r1, r2, r3
+    
+graph (62).svg
+
+## TODO
+
+ - Add logging of what requests were dropped and why: make it possible to treat lost requests separately, in a new session (Save information to, e.g., MongoDb)
+ - Enable subsequent sessions to continue from an aborted or terminated session: use information in Neo4j for this - do not lookup terms that are already in the db.
+ 
+ 
+    java -jar target/gavagai-lexicon-graph.jar -a <api-key> -d /Users/fredriko/lexicon-2 -l en -m 3 -t "no-fly zone" -t "hillary clinton"
+
+ 
+     19:42:01.148  No more Lexicon Lookup Requests available. Shutting down.
+     19:42:01.156  Processed a total of 110556 unique terms
+     19:42:01.160  Total running time: 189 min, 2 sec
+     19:42:01.161  Interrupted! Aborting processing
+     19:42:01.475  Exiting main program
