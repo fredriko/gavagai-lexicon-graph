@@ -65,8 +65,9 @@ graph (62).svg
     java -jar target/gavagai-lexicon-graph.jar -a <api-key> -d /Users/fredriko/lexicon-2 -l en -m 3 -t "no-fly zone" -t "hillary clinton"
 
  
-     19:42:01.148  No more Lexicon Lookup Requests available. Shutting down.
+ Note that invoking this program is typically a long running process. When executing the above command (modulo the api-key), it took a bit more than three hours to obtain 110k+ terms from the Lexicon: 
+ 
+ 
      19:42:01.156  Processed a total of 110556 unique terms
      19:42:01.160  Total running time: 189 min, 2 sec
-     19:42:01.161  Interrupted! Aborting processing
      19:42:01.475  Exiting main program
