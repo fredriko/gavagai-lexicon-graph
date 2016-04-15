@@ -66,7 +66,7 @@ graph (62).svg
 
  
  Note that invoking this program is typically a long running process. When executing the above command (modulo the api-key), it took a bit more than three hours to obtain 110k+ terms from the Lexicon: 
- 
+
  
      19:42:01.156  Processed a total of 110556 unique terms
      19:42:01.160  Total running time: 189 min, 2 sec
