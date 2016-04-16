@@ -50,7 +50,7 @@ and you will end up with a number of tuples, each of which contains terms that a
 ![alt tag](https://raw.githubusercontent.com/fredriko/fredriko.github.io/master/media/images/example-tuples.png)
 
 
-Another example. If you wish to find out the immediate neighborhood of our initial target term, "no-fly zone", issue the following query:
+Another example. If you wish to find out the immediate neighborhood of our initial target term, "no-fly zone", issue the following query (again, click the image for a larger version):
 
     MATCH (a {name:"no-fly zone"})-[r1:NEIGHBOR]-(b)-[r2:NEIGHBOR]-(c)-[r3:NEIGHBOR]-(d)
     WHERE r1.strength > 0.3 AND r2.strength > 0.3 AND r3.strength > 0.3
@@ -59,7 +59,7 @@ Another example. If you wish to find out the immediate neighborhood of our initi
 
 ![alt tag](https://raw.githubusercontent.com/fredriko/fredriko.github.io/master/media/images/no-fly-zone-neighborhood.png)
 
-## Known issues
+## Known issues/TODO:s
 
  - Add logging of what requests were dropped and why: make it possible to treat lost requests separately, in a new session (Save information to, e.g., MongoDb)
  - Enable subsequent sessions to continue from an aborted or terminated session: use information in Neo4j for this - do not lookup terms that are already in the db.
