@@ -12,9 +12,6 @@ import java.util.concurrent.*;
  * Class responsible for building a Neo4j graph database from entries in the Gavagai Living Lexicon.
  * Invoke {@link se.fredrikolsson.gavagai.GraphCreator} without command line arguments to see usage
  * information.
- *
- *
- * TODO README.md
  */
 class GraphCreator implements Stoppable {
 
