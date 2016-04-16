@@ -1,6 +1,6 @@
 # Gavagai Lexicon Graph
 
-This is a utility for creating a Neo4j graph database from the word knowledge available in [Gavagai Living Lexicon](http://lexicon.gavagai.se/). 
+This is a utility for creating a Neo4j graph database from the word knowledge available in [Gavagai Living Lexicon](http://lexicon.gavagai.se/).
 
 Given one or more target terms, the graph creator retrieves all semantically similar neighbors up to a pre-specified distance. Two terms are semantically similar if they appear in similar contexts in the texts indexed by Gavagai's semantic memories. Examples of similar terms are **data science**, **machine learning**, **natural language processing**, and **computer vision**. The semantic memories learn, completely unsupervised, by continuously reading documents from online media, blogs, and forum posts.
 
@@ -44,7 +44,7 @@ Once the data has been retrieved, start Neo4j and point it to `/tmp/lexicon-1`. 
     WHERE r1.strength > 0.5 AND r2.strength > 0.5 AND r3.strength > 0.5
     RETURN r1, r2, r3
     
-and you will end up with a number of tuples, each of which contains terms that are fairly tight connected when it comes to their use in general language. Here's the output I got for the above question:
+and you will end up with a number of tuples, each of which contains terms that are fairly tight connected when it comes to their use in general language. Here's the output I got for the above question (click the image for a larger version):
 
 
 ![alt tag](https://raw.githubusercontent.com/fredriko/fredriko.github.io/master/media/images/example-tuples.png)
@@ -56,7 +56,8 @@ Another example. If you wish to find out the immediate neighborhood of our initi
     WHERE r1.strength > 0.3 AND r2.strength > 0.3 AND r3.strength > 0.3
     RETURN r1, r2, r3
     
-graph (62).svg
+
+![alt tag](https://raw.githubusercontent.com/fredriko/fredriko.github.io/master/media/images/no-fly-zone-neighborhood.png)
 
 ## Known issues
 
