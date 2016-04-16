@@ -8,7 +8,7 @@ Use the [Gavagai Living Lexicon](http://lexicon.gavagai.se/) to peak into the se
 
 ## Prerequisites
 
-You will need:
+To run and build this utility, you will need:
  
  - an API key from [Gavagai](http://gavagai.se). Sign up for one [here](https://developer.gavagai.se/).
  - Java 1.7. Refer to [Java Help Center](https://java.com/en/download/help/index_installing.xml) for installation instructions.
@@ -46,9 +46,11 @@ Once the data has been retrieved, start Neo4j and point it to `/tmp/lexicon-1`. 
     
 and you will end up with a number of tuples, each of which contains terms that are fairly tight connected when it comes to their use in general language. Here's the output I got for the above question:
 
-graph (61).svg
 
-Another example. If you wish to find out the immediate neigborhood of our initial target term, "no-fly zone", issue the following query:
+![alt tag](https://raw.githubusercontent.com/fredriko/fredriko.github.io/master/media/images/example-tuples.png)
+
+
+Another example. If you wish to find out the immediate neighborhood of our initial target term, "no-fly zone", issue the following query:
 
     MATCH (a {name:"no-fly zone"})-[r1:NEIGHBOR]-(b)-[r2:NEIGHBOR]-(c)-[r3:NEIGHBOR]-(d)
     WHERE r1.strength > 0.3 AND r2.strength > 0.3 AND r3.strength > 0.3
@@ -56,18 +58,7 @@ Another example. If you wish to find out the immediate neigborhood of our initia
     
 graph (62).svg
 
-## TODO
+## Known issues
 
  - Add logging of what requests were dropped and why: make it possible to treat lost requests separately, in a new session (Save information to, e.g., MongoDb)
  - Enable subsequent sessions to continue from an aborted or terminated session: use information in Neo4j for this - do not lookup terms that are already in the db.
- 
- 
-    java -jar target/gavagai-lexicon-graph.jar -a <api-key> -d /Users/fredriko/lexicon-2 -l en -m 3 -t "no-fly zone" -t "hillary clinton"
-
- 
- Note that invoking this program is typically a long running process. When executing the above command (modulo the api-key), it took a bit more than three hours to obtain 110k+ terms from the Lexicon: 
-
- 
-     19:42:01.156  Processed a total of 110556 unique terms
-     19:42:01.160  Total running time: 189 min, 2 sec
-     19:42:01.475  Exiting main program
