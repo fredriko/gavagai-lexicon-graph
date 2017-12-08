@@ -47,7 +47,7 @@ Once the data has been retrieved, start Neo4j and point it to `/tmp/lexicon-1`. 
 and you will end up with a number of tuples, each of which contains terms that are fairly tight connected when it comes to their use in general language. Here's the output I got for the above question (click the image for a larger version):
 
 
-![alt tag](https://raw.githubusercontent.com/fredriko/fredriko.github.io/master/media/images/example-tuples.png)
+![alt tag](images/example-tuples.png)
 
 
 Another example. If you wish to find out the immediate neighborhood of our initial target term, "no-fly zone", issue the following query (again, click the image for a larger version):
@@ -57,7 +57,7 @@ Another example. If you wish to find out the immediate neighborhood of our initi
     RETURN r1, r2, r3
     
 
-![alt tag](https://raw.githubusercontent.com/fredriko/fredriko.github.io/master/media/images/no-fly-zone-neighborhood.png)
+![alt tag](images/no-fly-zone-neighborhood.png)
 
 ## Known issues/TODO:s
 
