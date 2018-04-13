@@ -23,7 +23,7 @@ To run the pre-compiled Gavagai Lexicon Graph utility, you need:
 
 Follow the instructions in the **Run** section below.
 
-## How to build the Gavagai Lexicon Graph utility from the source
+## How to build the Gavagai Lexicon Graph utility from source
 
 To build the utility from source, you need:
 
