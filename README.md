@@ -6,23 +6,38 @@ Given one or more target terms, the graph creator retrieves all semantically sim
 
 Use the [Gavagai Living Lexicon](http://lexicon.gavagai.se/) to peak into the semantic memories, and to check the presence of terms. The Lexicon provides information for a single target term at a time, while the Gavagai Lexicon Graph application combines the information for multiple terms into a graph database.
 
-## Prerequisites
+See the following posts for examples of output produced the Gavagai Lexicon Graph
 
-To run and build this utility, you will need:
- 
+ - [Business bingo - Is your text analytics system up-to-date with current affairs?](https://www.linkedin.com/pulse/business-bingo-your-text-analytics-system-current-affairs-olsson/)
+ - [The extraordinary productivity of foul language](https://www.linkedin.com/pulse/extraordinary-productivity-foul-language-do-you-your-fredrik-olsson/)
+
+
+## How to use the pre-compiled binary (jar)
+
+To run the pre-compiled Gavagai Lexicon Graph utility, you need:
+
+ - Java 1.7 or greater. Refer to [Java Help Center](https://java.com/en/download/help/index_installing.xml) for installation instructions.
  - an API key from [Gavagai](http://gavagai.se). Sign up for one [here](https://developer.gavagai.se/).
- - Java 1.7. Refer to [Java Help Center](https://java.com/en/download/help/index_installing.xml) for installation instructions.
+ - The JAR file containing the graph builder [Download it here](distribution/)
+ - Neo4j Community Edition installed. Instructions are available at [the Neo4j homepage](http://neo4j.com/download/). The current version of Gavagai Lexicon Graph has been tested with Neo4j version 3.3.5. 
+
+Follow the instructions in the **Run** section below.
+
+## How to build the Gavagai Lexicon Graph utility from the source
+
+To build the utility from source, you need:
+
+ - Java 1.7 or greater. Refer to [Java Help Center](https://java.com/en/download/help/index_installing.xml) for installation instructions.
  - Maven. Refer to the [Maven homepage](https://maven.apache.org/) for instructions on how to install it.
- - Neo4j Community Edition installed. Instructions are available at [the Neo4j homepage](http://neo4j.com/download/).
-
-
-## Build
+ - Neo4j Community Edition installed. Instructions are available at [the Neo4j homepage](http://neo4j.com/download/). The current version of Gavagai Lexicon Graph has been tested with Neo4j version 3.3.5. 
 
 On your local machine: Clone this project, change to the directory where the source code landed, and build it with
 
     mvn package
 
 This will generate an executable jar file including all dependencies in `gavagai-lexicon-graph/target/gavagai-lexicon-graph.jar`.
+
+Follow the instructions in the **Run** section below.
 
 ## Run
 
@@ -42,7 +57,7 @@ Once the data has been retrieved, start Neo4j and point it to `/tmp/lexicon-1`. 
 
     MATCH (a)-[r1:NEIGHBOR]-(b)-[r2:NEIGHBOR]-(c)-[r3:NEIGHBOR]-(d)
     WHERE r1.strength > 0.5 AND r2.strength > 0.5 AND r3.strength > 0.5
-    RETURN r1, r2, r3
+    RETURN a, b, c
     
 and you will end up with a number of tuples, each of which contains terms that are fairly tight connected when it comes to their use in general language. Here's the output I got for the above question (click the image for a larger version):
 
@@ -54,7 +69,7 @@ Another example. If you wish to find out the immediate neighborhood of our initi
 
     MATCH (a {name:"no-fly zone"})-[r1:NEIGHBOR]-(b)-[r2:NEIGHBOR]-(c)-[r3:NEIGHBOR]-(d)
     WHERE r1.strength > 0.3 AND r2.strength > 0.3 AND r3.strength > 0.3
-    RETURN r1, r2, r3
+    RETURN a, b, c
     
 
 ![alt tag](images/no-fly-zone-neighborhood.png)
